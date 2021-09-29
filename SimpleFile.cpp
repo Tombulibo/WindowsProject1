@@ -1,5 +1,9 @@
 #include "SimpleFile.h"
 
+SimpleFile::SimpleFile()
+{
+}
+
 BOOLEAN SimpleFile::ReadFile(WCHAR* pathName)
 {
 	wifstream inFile(pathName, ios::in);
