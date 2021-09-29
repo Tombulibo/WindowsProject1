@@ -4,6 +4,9 @@
 #include "framework.h"
 #include "WindowsProject1.h"
 
+#include <commdlg.h>
+#include "SimpleFile.h"
+
 #define MAX_LOADSTRING 100
 
 // 全局变量:
@@ -16,6 +19,10 @@ ATOM                MyRegisterClass(HINSTANCE hInstance);
 BOOL                InitInstance(HINSTANCE, int);
 LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
+
+vecLinesContainer fileLines; // 读取的文件内容
+HWND hWndEdit; // 文本框句柄
+WCHAR currentFile[260]; // 文件名
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
                      _In_opt_ HINSTANCE hPrevInstance,
@@ -109,6 +116,24 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    UpdateWindow(hWnd);
 
    return TRUE;
+
+   RECT rect;
+   GetClientRect(hWnd, &rect);
+   hWndEdit = CreateWindowW(
+       L"EDIT", L"简单文本编辑器：理解Win32 API方式下的消息机制",
+       WS_VISIBLE | WS_CHILD | ES_LEFT | ES_MULTILINE |
+       ES_WANTRETURN | WS_VSCROLL | ES_AUTOVSCROLL,
+       rect.left + 5, rect.top + 5,
+       rect.right - 10, rect.bottom - 10,
+       hWnd, nullptr, hInstance, nullptr);
+       HFONT hFont = CreateFont(
+           24, 0, 0, 0, 300, false, false, false,
+           DEFAULT_CHARSET, OUT_DEFAULT_PRECIS,
+           CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY,
+           DEFAULT_PITCH,
+           L"微软雅黑"
+       );
+       SendMessage(hWndEdit, WM_SETFONT, (WPARAM)hFont, TRUE);
 }
 
 //
@@ -123,6 +148,11 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 //
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
+    OPENFILENAME ofn; // OpenFile通用结构体
+    WCHAR szFile[260] = { 0 }; // 文件名
+    int cTxtLen; // 文本长度
+    WCHAR* allFileLines; // 文本内容
+
     switch (message)
     {
     case WM_COMMAND:
@@ -131,6 +161,84 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             // 分析菜单选择:
             switch (wmId)
             {
+            case IDM_OPEN :
+                //初始化OPENFILENAME结构体
+                ZeroMemory(&ofn, sizeof(ofn));
+                ofn.lStructSize = sizeof(ofn);
+                ofn.hwndOwner = hWnd;
+                ofn.lpstrFile = currentFile;
+                ofn.nMaxFile = sizeof(currentFile);
+                ofn.lpstrFilter =_T("All\0*.*\0Text\0*.TXT\0");
+                ofn.nFilterIndex = 1;
+                ofn.lpstrFileTitle = NULL;
+                ofn.nMaxFileTitle = 0;
+                ofn.lpstrInitialDir = NULL;
+                ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST;
+                
+                if (GetOpenFileName(&ofn) == TRUE)
+                {
+                    SetWindowText(hWnd, ofn.lpstrFile);
+                    SimpleFile simplefile;
+                    fileLines = simplefile.getFileLines(ofn.lpstrFile);
+
+                    vecLinesContainer::iterator it;
+                    std::wstring allLines = L"";
+                    for (it = fileLines.begin(); it != fileLines.end(); it++)
+                    {
+                        allLines.append(*it);
+                        allLines.append(L"\r\n");
+                    }
+
+                    SetWindowText(hWndEdit, allLines.c_str());
+
+                }       
+                break;
+            case IDM_SAVE:
+                SetWindowText(hWnd, currentFile);
+                cTxtLen = GetWindowTextLength(hWndEdit);
+                allFileLines =
+                    (LPWSTR)VirtualAlloc((LPVOID)NULL,
+                                         (DWORD)(cTxtLen + 1),
+                                         MEM_COMMIT,
+                                         PAGE_READWRITE);
+                GetWindowText(hWndEdit, allFileLines, cTxtLen + 1);
+                if (allFileLines != NULL)
+                {
+                    SimpleFile simplefile;
+                    simplefile.WriteFile(currentFile, allFileLines);
+                }
+                break;
+            case IDM_SAVEAS :
+                //初始化OPENFILENAME结构体
+                ZeroMemory(&ofn, sizeof(ofn));
+                ofn.lStructSize = sizeof(ofn);
+                ofn.hwndOwner = hWnd;
+                ofn.lpstrFile = szFile;
+                ofn.nMaxFile = sizeof(szFile);
+                ofn.lpstrFilter = _T("All\0*.*\0Text\0*.TXT\0");
+                ofn.nFilterIndex = 1;
+                ofn.lpstrFileTitle = NULL;
+                ofn.nMaxFileTitle = 0;
+                ofn.lpstrInitialDir = NULL;
+                ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST;
+                if (GetSaveFileName(&ofn) == TRUE)
+                {
+                    SetWindowText(hWnd, ofn.lpstrFile);
+                    cTxtLen = GetWindowTextLength(hWndEdit);
+                    allFileLines =
+                        (LPWSTR)VirtualAlloc((LPVOID)NULL,
+                                             (DWORD)(cTxtLen + 1),
+                                             MEM_COMMIT,
+                                             PAGE_READWRITE);
+                    GetWindowText(hWndEdit, allFileLines, cTxtLen + 1);
+                    if (allFileLines != NULL)
+                    {
+                        SimpleFile simplefile;
+                        simplefile.WriteFile(ofn.lpstrFile, allFileLines);
+                    }
+                }
+                break;
+
             case IDM_ABOUT:
                 DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
                 break;
