@@ -115,8 +115,6 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    ShowWindow(hWnd, nCmdShow);
    UpdateWindow(hWnd);
 
-   return TRUE;
-
    RECT rect;
    GetClientRect(hWnd, &rect);
    hWndEdit = CreateWindowW(
@@ -126,14 +124,16 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
        rect.left + 5, rect.top + 5,
        rect.right - 10, rect.bottom - 10,
        hWnd, nullptr, hInstance, nullptr);
-       HFONT hFont = CreateFont(
-           24, 0, 0, 0, 300, false, false, false,
-           DEFAULT_CHARSET, OUT_DEFAULT_PRECIS,
-           CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY,
-           DEFAULT_PITCH,
-           L"微软雅黑"
-       );
-       SendMessage(hWndEdit, WM_SETFONT, (WPARAM)hFont, TRUE);
+   HFONT hFont = CreateFont(
+       24, 0, 0, 0, 300, false, false, false,
+       DEFAULT_CHARSET, OUT_DEFAULT_PRECIS,
+       CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY,
+       DEFAULT_PITCH,
+       L"微软雅黑"
+   );
+   SendMessage(hWndEdit, WM_SETFONT, (WPARAM)hFont, TRUE);
+
+   return TRUE;
 }
 
 //
